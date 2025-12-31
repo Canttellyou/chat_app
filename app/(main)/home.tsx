@@ -5,10 +5,16 @@ import ScreenWrapper from "@/components/ScreenWrapper";
 import Typo from "@/components/Typo";
 import { colors, radius, spacingX, spacingY } from "@/constants/theme";
 import { useAuth } from "@/contexts/authContext";
+import {
+  getConversations,
+  newConversation,
+  newMessage,
+} from "@/socket/socketEvents";
+import { ConversationProps, ResponseProps } from "@/types";
 import { verticalScale } from "@/utils/styling";
 import { useRouter } from "expo-router";
 import * as Icons from "phosphor-react-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 
 const Home = () => {
@@ -16,20 +22,47 @@ const Home = () => {
 
   const [selectedTab, setSelectedTab] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [conversations, setConversations] = useState<ConversationProps[]>([]);
   // console.log("user: ", user);
 
-  // useEffect(() => {
-  //   testSocket(testSocketCallbackHandler);
-  //   testSocket(null);
+  useEffect(() => {
+    getConversations(processConversations);
+    newConversation(newConversationHandler);
+    newMessage(newMessageHandler);
 
-  //   return () => {
-  //     testSocket(testSocketCallbackHandler, true);
-  //   };
-  // }, []);
+    getConversations(null);
 
-  // const testSocketCallbackHandler = (data: any) => {
-  //   console.log("Received data from testSocket event: ", data);
-  // };
+    return () => {
+      getConversations(processConversations, true);
+      newConversation(newConversationHandler, true);
+      newMessage(newMessageHandler, true);
+    };
+  }, []);
+
+  const processConversations = (res: ResponseProps) => {
+    if (res.success) {
+      setConversations(res.data);
+    }
+  };
+
+  const newConversationHandler = (res: ResponseProps) => {
+    if (res.success) {
+      setConversations((prev) => [...prev, res.data]);
+    }
+  };
+
+  const newMessageHandler = (res: ResponseProps) => {
+    if (res.success) {
+      let conversationId = res.data.conversationId;
+      setConversations((prev) => {
+        let updateConversations = prev.map((item) => {
+          if (item._id === conversationId) item.lastMessage = res.data;
+          return item;
+        });
+        return updateConversations;
+      });
+    }
+  };
 
   const router = useRouter();
 
@@ -37,191 +70,191 @@ const Home = () => {
     await signOut();
   };
 
-  const conversations = [
-    {
-      name: "Alice",
-      type: "direct",
-      lastMessage: {
-        senderName: "Alice",
-        content: "Hey! Are we still on for tonight?",
-        createdAt: "2025-06-22T18:45:00Z",
-      },
-    },
-    {
-      name: "Project Team",
-      type: "group",
-      lastMessage: {
-        senderName: "Sarah",
-        content: "Meeting rescheduled to 3pm tomorrow.",
-        createdAt: "2025-06-21T14:10:00Z",
-      },
-    },
-    {
-      name: "Marcus",
-      type: "direct",
-      lastMessage: {
-        senderName: "You",
-        content: "Thanks for the help earlier!",
-        createdAt: "2025-06-21T09:30:00Z",
-      },
-    },
-    {
-      name: "Family Group",
-      type: "group",
-      lastMessage: {
-        senderName: "Mom",
-        content: "Don't forget Sunday dinner at 6pm",
-        createdAt: "2025-06-20T16:22:00Z",
-      },
-    },
-    {
-      name: "Emma",
-      type: "direct",
-      lastMessage: {
-        senderName: "Emma",
-        content: "Did you see the latest episode? 😱",
-        createdAt: "2025-06-20T21:15:00Z",
-      },
-    },
-    {
-      name: "Design Squad",
-      type: "group",
-      lastMessage: {
-        senderName: "Jake",
-        content: "New mockups uploaded to Figma",
-        createdAt: "2025-06-20T11:45:00Z",
-      },
-    },
-    {
-      name: "David",
-      type: "direct",
-      lastMessage: {
-        senderName: "David",
-        content: "Can you review my PR when you get a chance?",
-        createdAt: "2025-06-19T15:33:00Z",
-      },
-    },
-    {
-      name: "Book Club",
-      type: "group",
-      lastMessage: {
-        senderName: "Lisa",
-        content: "Next meeting: July 5th, we're reading 'The Midnight Library'",
-        createdAt: "2025-06-19T19:00:00Z",
-      },
-    },
-    {
-      name: "Rachel",
-      type: "direct",
-      lastMessage: {
-        senderName: "You",
-        content: "Sounds good, see you there!",
-        createdAt: "2025-06-18T12:20:00Z",
-      },
-    },
-    {
-      name: "Weekend Warriors",
-      type: "group",
-      lastMessage: {
-        senderName: "Tom",
-        content: "Hiking trip confirmed for Saturday 7am",
-        createdAt: "2025-06-18T08:10:00Z",
-      },
-    },
-    {
-      name: "Chris",
-      type: "direct",
-      lastMessage: {
-        senderName: "Chris",
-        content: "Happy birthday! 🎉🎂",
-        createdAt: "2025-06-17T00:05:00Z",
-      },
-    },
-    {
-      name: "Dev Team",
-      type: "group",
-      lastMessage: {
-        senderName: "Kevin",
-        content: "Production deployment completed successfully",
-        createdAt: "2025-06-16T22:30:00Z",
-      },
-    },
-    {
-      name: "Olivia",
-      type: "direct",
-      lastMessage: {
-        senderName: "Olivia",
-        content: "Just finished the report, sending it over now",
-        createdAt: "2025-06-16T17:45:00Z",
-      },
-    },
-    {
-      name: "Gym Buddies",
-      type: "group",
-      lastMessage: {
-        senderName: "Mike",
-        content: "Who's in for legs day tomorrow?",
-        createdAt: "2025-06-16T06:30:00Z",
-      },
-    },
-    {
-      name: "Sophie",
-      type: "direct",
-      lastMessage: {
-        senderName: "You",
-        content: "Let me know when you're free to chat",
-        createdAt: "2025-06-15T14:55:00Z",
-      },
-    },
-    {
-      name: "Marketing Team",
-      type: "group",
-      lastMessage: {
-        senderName: "Amanda",
-        content: "Q2 results are looking great! 📈",
-        createdAt: "2025-06-15T10:20:00Z",
-      },
-    },
-    {
-      name: "James",
-      type: "direct",
-      lastMessage: {
-        senderName: "James",
-        content: "Got the tickets! Section 105, row 12",
-        createdAt: "2025-06-14T20:18:00Z",
-      },
-    },
-    {
-      name: "Study Group",
-      type: "group",
-      lastMessage: {
-        senderName: "Nina",
-        content: "Exam notes shared in the drive folder",
-        createdAt: "2025-06-14T13:40:00Z",
-      },
-    },
-    {
-      name: "Alex",
-      type: "direct",
-      lastMessage: {
-        senderName: "Alex",
-        content: "Coffee tomorrow morning?",
-        createdAt: "2025-06-13T18:05:00Z",
-      },
-    },
-  ];
+  // const conversations = [
+  //   {
+  //     name: "Alice",
+  //     type: "direct",
+  //     lastMessage: {
+  //       senderName: "Alice",
+  //       content: "Hey! Are we still on for tonight?",
+  //       createdAt: "2025-06-22T18:45:00Z",
+  //     },
+  //   },
+  //   {
+  //     name: "Project Team",
+  //     type: "group",
+  //     lastMessage: {
+  //       senderName: "Sarah",
+  //       content: "Meeting rescheduled to 3pm tomorrow.",
+  //       createdAt: "2025-06-21T14:10:00Z",
+  //     },
+  //   },
+  //   {
+  //     name: "Marcus",
+  //     type: "direct",
+  //     lastMessage: {
+  //       senderName: "You",
+  //       content: "Thanks for the help earlier!",
+  //       createdAt: "2025-06-21T09:30:00Z",
+  //     },
+  //   },
+  //   {
+  //     name: "Family Group",
+  //     type: "group",
+  //     lastMessage: {
+  //       senderName: "Mom",
+  //       content: "Don't forget Sunday dinner at 6pm",
+  //       createdAt: "2025-06-20T16:22:00Z",
+  //     },
+  //   },
+  //   {
+  //     name: "Emma",
+  //     type: "direct",
+  //     lastMessage: {
+  //       senderName: "Emma",
+  //       content: "Did you see the latest episode? 😱",
+  //       createdAt: "2025-06-20T21:15:00Z",
+  //     },
+  //   },
+  //   {
+  //     name: "Design Squad",
+  //     type: "group",
+  //     lastMessage: {
+  //       senderName: "Jake",
+  //       content: "New mockups uploaded to Figma",
+  //       createdAt: "2025-06-20T11:45:00Z",
+  //     },
+  //   },
+  //   {
+  //     name: "David",
+  //     type: "direct",
+  //     lastMessage: {
+  //       senderName: "David",
+  //       content: "Can you review my PR when you get a chance?",
+  //       createdAt: "2025-06-19T15:33:00Z",
+  //     },
+  //   },
+  //   {
+  //     name: "Book Club",
+  //     type: "group",
+  //     lastMessage: {
+  //       senderName: "Lisa",
+  //       content: "Next meeting: July 5th, we're reading 'The Midnight Library'",
+  //       createdAt: "2025-06-19T19:00:00Z",
+  //     },
+  //   },
+  //   {
+  //     name: "Rachel",
+  //     type: "direct",
+  //     lastMessage: {
+  //       senderName: "You",
+  //       content: "Sounds good, see you there!",
+  //       createdAt: "2025-06-18T12:20:00Z",
+  //     },
+  //   },
+  //   {
+  //     name: "Weekend Warriors",
+  //     type: "group",
+  //     lastMessage: {
+  //       senderName: "Tom",
+  //       content: "Hiking trip confirmed for Saturday 7am",
+  //       createdAt: "2025-06-18T08:10:00Z",
+  //     },
+  //   },
+  //   {
+  //     name: "Chris",
+  //     type: "direct",
+  //     lastMessage: {
+  //       senderName: "Chris",
+  //       content: "Happy birthday! 🎉🎂",
+  //       createdAt: "2025-06-17T00:05:00Z",
+  //     },
+  //   },
+  //   {
+  //     name: "Dev Team",
+  //     type: "group",
+  //     lastMessage: {
+  //       senderName: "Kevin",
+  //       content: "Production deployment completed successfully",
+  //       createdAt: "2025-06-16T22:30:00Z",
+  //     },
+  //   },
+  //   {
+  //     name: "Olivia",
+  //     type: "direct",
+  //     lastMessage: {
+  //       senderName: "Olivia",
+  //       content: "Just finished the report, sending it over now",
+  //       createdAt: "2025-06-16T17:45:00Z",
+  //     },
+  //   },
+  //   {
+  //     name: "Gym Buddies",
+  //     type: "group",
+  //     lastMessage: {
+  //       senderName: "Mike",
+  //       content: "Who's in for legs day tomorrow?",
+  //       createdAt: "2025-06-16T06:30:00Z",
+  //     },
+  //   },
+  //   {
+  //     name: "Sophie",
+  //     type: "direct",
+  //     lastMessage: {
+  //       senderName: "You",
+  //       content: "Let me know when you're free to chat",
+  //       createdAt: "2025-06-15T14:55:00Z",
+  //     },
+  //   },
+  //   {
+  //     name: "Marketing Team",
+  //     type: "group",
+  //     lastMessage: {
+  //       senderName: "Amanda",
+  //       content: "Q2 results are looking great! 📈",
+  //       createdAt: "2025-06-15T10:20:00Z",
+  //     },
+  //   },
+  //   {
+  //     name: "James",
+  //     type: "direct",
+  //     lastMessage: {
+  //       senderName: "James",
+  //       content: "Got the tickets! Section 105, row 12",
+  //       createdAt: "2025-06-14T20:18:00Z",
+  //     },
+  //   },
+  //   {
+  //     name: "Study Group",
+  //     type: "group",
+  //     lastMessage: {
+  //       senderName: "Nina",
+  //       content: "Exam notes shared in the drive folder",
+  //       createdAt: "2025-06-14T13:40:00Z",
+  //     },
+  //   },
+  //   {
+  //     name: "Alex",
+  //     type: "direct",
+  //     lastMessage: {
+  //       senderName: "Alex",
+  //       content: "Coffee tomorrow morning?",
+  //       createdAt: "2025-06-13T18:05:00Z",
+  //     },
+  //   },
+  // ];
 
   let directConversations = conversations
-    .filter((item: any) => item.type === "direct")
-    .sort((a: any, b: any) => {
+    .filter((item: ConversationProps) => item.type === "direct")
+    .sort((a: ConversationProps, b: ConversationProps) => {
       const aDate = a?.lastMessage?.createdAt || a.createdAt;
       const bDate = b?.lastMessage?.createdAt || b.createdAt;
       return new Date(bDate).getTime() - new Date(aDate).getTime();
     });
 
   let groupConversations = conversations
-    .filter((item: any) => item.type === "group")
-    .sort((a: any, b: any) => {
+    .filter((item: ConversationProps) => item.type === "group")
+    .sort((a: ConversationProps, b: ConversationProps) => {
       const aDate = a?.lastMessage?.createdAt || a.createdAt;
       const bDate = b?.lastMessage?.createdAt || b.createdAt;
       return new Date(bDate).getTime() - new Date(aDate).getTime();
@@ -285,7 +318,7 @@ const Home = () => {
             </View>
             <View style={styles.conversationList}>
               {selectedTab === 0 &&
-                directConversations.map((item: any, index) => {
+                directConversations.map((item: ConversationProps, index) => {
                   return (
                     <ConversationItem
                       item={item}
@@ -296,7 +329,7 @@ const Home = () => {
                   );
                 })}
               {selectedTab === 1 &&
-                groupConversations.map((item: any, index) => {
+                groupConversations.map((item: ConversationProps, index) => {
                   return (
                     <ConversationItem
                       item={item}
