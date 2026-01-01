@@ -22,7 +22,7 @@ const MessageItem = ({
   // console.log("message item: ", item);
 
   const formattedDate = moment(item.createdAt).isSame(moment(), "day")
-    ? moment(item.createdAt).format("h:mmm A")
+    ? moment(item.createdAt).format("h:mm A")
     : moment(item.createdAt).format("MMM D, h:mm A");
 
   return (

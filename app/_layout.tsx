@@ -1,9 +1,23 @@
 import { AuthProvider } from "@/contexts/authContext";
+import { requestNotificationPermissions } from "@/socket/socketEvents";
 import { Stack } from "expo-router";
-import React from "react";
+import React, { useEffect } from "react";
 import { StyleSheet } from "react-native";
 
 const StackLayout = () => {
+  useEffect(() => {
+    const setupNotifications = async () => {
+      const granted = await requestNotificationPermissions();
+
+      if (granted) {
+        console.log("✅ Notifications enabled");
+      } else {
+        console.log("❌ Notifications disabled");
+      }
+    };
+
+    setupNotifications();
+  }, []);
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen

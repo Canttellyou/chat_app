@@ -1,5 +1,6 @@
 import { login, register } from "@/services/authService";
 import { connectSocket, disconnectSocket } from "@/socket/socket";
+import { setCurrentUserId } from "@/socket/socketEvents";
 import { AuthContextProps, DecodedTokenProps, UserProps } from "@/types";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
@@ -47,6 +48,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         await connectSocket();
         setUser(decoded.user);
 
+        // SET CURRENT USER ID FOR NOTIFICATIONS
+        setCurrentUserId(decoded?.user?.id ?? null);
+
         goToHomePage();
       } catch (error) {
         goToWelcomePage();
@@ -77,6 +81,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const decoded = jwtDecode<DecodedTokenProps>(token);
       console.log("decoded token: ", decoded);
       setUser(decoded.user);
+
+      // SET CURRENT USER ID FOR NOTIFICATIONS
+      setCurrentUserId(decoded.user.id ?? null);
     }
   };
 
@@ -103,6 +110,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setToken(null);
     setUser(null);
     await AsyncStorage.removeItem("token");
+
+    // CLEAR CURRENT USER ID FOR NOTIFICATIONS
+    setCurrentUserId(null);
+
     disconnectSocket();
     router.replace("/(auth)/welcome");
   };
