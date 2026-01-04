@@ -1,4 +1,4 @@
-import { API_URL } from "@/constants";
+import { API_URL } from "@env";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { io, Socket } from "socket.io-client";
 

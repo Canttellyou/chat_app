@@ -10,6 +10,7 @@ import {
   ReactNode,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -25,73 +26,104 @@ export const AuthContext = createContext<AuthContextProps>({
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<UserProps | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const hasNavigated = useRef(false);
 
   useEffect(() => {
     loadToken();
-  }, []);
+  }, []); // Empty array - only run once on mount
 
   const loadToken = async () => {
-    const storedToken = await AsyncStorage.getItem("token");
-    if (storedToken) {
-      try {
+    try {
+      const storedToken = await AsyncStorage.getItem("token");
+
+      if (storedToken) {
         const decoded = jwtDecode<DecodedTokenProps>(storedToken);
+
+        // Check if token has expired
         if (decoded.exp && decoded.exp < Date.now() / 1000) {
-          // token has expired, navigate to welcome page
+          console.log("Token expired, clearing...");
           await AsyncStorage.removeItem("token");
+          setIsLoading(false);
           goToWelcomePage();
           return;
         }
 
-        //  user is logged in
+        // Token is valid - set user state
         setToken(storedToken);
-        await connectSocket();
         setUser(decoded.user);
-
-        // SET CURRENT USER ID FOR NOTIFICATIONS
         setCurrentUserId(decoded?.user?.id ?? null);
 
+        // Connect socket
+        await connectSocket();
+
+        setIsLoading(false);
         goToHomePage();
-      } catch (error) {
+      } else {
+        // No token found
+        setIsLoading(false);
         goToWelcomePage();
-        console.log("Failed to decode token: ", error);
       }
-    } else {
+    } catch (error) {
+      console.error("Failed to decode token: ", error);
+      await AsyncStorage.removeItem("token");
+      setIsLoading(false);
       goToWelcomePage();
     }
   };
 
   const goToHomePage = () => {
+    if (hasNavigated.current) return; // Prevent multiple navigations
+    hasNavigated.current = true;
+
     setTimeout(() => {
       router.replace("/(main)/home");
-    }, 1500);
+      hasNavigated.current = false; // Reset after navigation
+    }, 100); // Reduced delay
   };
 
   const goToWelcomePage = () => {
+    if (hasNavigated.current) return; // Prevent multiple navigations
+    hasNavigated.current = true;
+
     setTimeout(() => {
       router.replace("/(auth)/welcome");
-    });
+      hasNavigated.current = false; // Reset after navigation
+    }, 100); // Reduced delay
   };
 
   const updateToken = async (token: string) => {
     if (token) {
       setToken(token);
       await AsyncStorage.setItem("token", token);
-      // decode token(user)
+
+      // Decode token to get user data
       const decoded = jwtDecode<DecodedTokenProps>(token);
       console.log("decoded token: ", decoded);
       setUser(decoded.user);
 
-      // SET CURRENT USER ID FOR NOTIFICATIONS
+      // Set current user ID for notifications
       setCurrentUserId(decoded.user.id ?? null);
     }
   };
 
   const signIn = async (email: string, password: string) => {
-    const response = await login(email, password);
-    await updateToken(response.token);
-    await connectSocket();
-    router.replace("/(main)/home");
+    try {
+      const response = await login(email, password);
+      await updateToken(response.token);
+      await connectSocket();
+
+      // Direct navigation without delay
+      hasNavigated.current = true;
+      router.replace("/(main)/home");
+      setTimeout(() => {
+        hasNavigated.current = false;
+      }, 1000);
+    } catch (error) {
+      console.error("Sign in error:", error);
+      throw error;
+    }
   };
 
   const signUp = async (
@@ -100,10 +132,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     name: string,
     avatar?: string | null
   ) => {
-    const response = await register(email, password, name, avatar);
-    await updateToken(response.token);
-    await connectSocket();
-    router.replace("/(main)/home");
+    try {
+      const response = await register(email, password, name, avatar);
+      await updateToken(response.token);
+      await connectSocket();
+
+      // Direct navigation without delay
+      hasNavigated.current = true;
+      router.replace("/(main)/home");
+      setTimeout(() => {
+        hasNavigated.current = false;
+      }, 1000);
+    } catch (error) {
+      console.error("Sign up error:", error);
+      throw error;
+    }
   };
 
   const signOut = async () => {
@@ -111,12 +154,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
     await AsyncStorage.removeItem("token");
 
-    // CLEAR CURRENT USER ID FOR NOTIFICATIONS
+    // Clear current user ID for notifications
     setCurrentUserId(null);
 
     disconnectSocket();
+
+    hasNavigated.current = true;
     router.replace("/(auth)/welcome");
+    setTimeout(() => {
+      hasNavigated.current = false;
+    }, 1000);
   };
+
+  // Show loading screen while checking auth
+  if (isLoading) {
+    return null; // Or return a SplashScreen component
+  }
 
   return (
     <AuthContext.Provider
