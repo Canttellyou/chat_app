@@ -26,6 +26,7 @@ const Register = () => {
   const emailRef = useRef("");
   const passwordRef = useRef("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const { signUp } = useAuth();
 
@@ -93,16 +94,37 @@ const Register = () => {
                   />
                 }
               />
-              <Input
-                placeholder="Enter your password"
-                onChangeText={(value: string) => (passwordRef.current = value)}
-                icon={
-                  <Icons.Lock
-                    size={verticalScale(26)}
-                    color={colors.neutral600}
-                  />
-                }
-              />
+              <View>
+                <Input
+                  placeholder="Enter your password"
+                  onChangeText={(value: string) =>
+                    (passwordRef.current = value)
+                  }
+                  secureTextEntry={!showPassword}
+                  icon={
+                    <Icons.Lock
+                      size={verticalScale(26)}
+                      color={colors.neutral600}
+                    />
+                  }
+                />
+                <Pressable
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeIcon}
+                >
+                  {showPassword ? (
+                    <Icons.Eye
+                      size={verticalScale(26)}
+                      color={colors.neutral600}
+                    />
+                  ) : (
+                    <Icons.EyeSlash
+                      size={verticalScale(26)}
+                      color={colors.neutral600}
+                    />
+                  )}
+                </Pressable>
+              </View>
 
               <View style={{ marginTop: spacingY._25, gap: spacingY._15 }}>
                 <Button loading={isLoading} onPress={handleSubmit}>
@@ -161,5 +183,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     gap: 5,
+  },
+  eyeIcon: {
+    position: "absolute",
+    right: spacingX._15,
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: spacingX._10,
   },
 });

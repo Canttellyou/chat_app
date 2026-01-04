@@ -20,12 +20,15 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   TouchableOpacity,
   View,
 } from "react-native";
+
 const ProfileModal = () => {
   const { user, signOut, updateToken } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   const router = useRouter();
 
@@ -69,6 +72,7 @@ const ProfileModal = () => {
       Alert.alert("User", res.message || "Failed to update profile");
     }
   };
+
   useEffect(() => {
     setUserData({
       name: user?.name || "",
@@ -97,10 +101,19 @@ const ProfileModal = () => {
     ]);
   };
 
+  const toggleNotifications = () => {
+    setNotificationsEnabled(!notificationsEnabled);
+    // TODO: Save notification preference to AsyncStorage or backend
+    Alert.alert(
+      "Notifications",
+      `Notifications ${!notificationsEnabled ? "enabled" : "disabled"}`
+    );
+  };
+
   const onSubmit = async () => {
     let { name, avatar } = userData;
     if (!name.trim()) {
-      Alert.alert("User", "Please  enter your name");
+      Alert.alert("User", "Please enter your name");
       return;
     }
 
@@ -123,6 +136,7 @@ const ProfileModal = () => {
 
     updateProfile(data);
   };
+
   return (
     <ScreenWrapper isModal={true}>
       <View style={styles.container}>
@@ -176,6 +190,52 @@ const ProfileModal = () => {
                 }
               />
             </View>
+          </View>
+
+          <View style={styles.settingsSection}>
+            <Typo
+              size={18}
+              fontWeight="600"
+              style={{ paddingLeft: spacingX._10, marginBottom: spacingY._10 }}
+            >
+              Settings
+            </Typo>
+
+            <TouchableOpacity
+              style={styles.settingItem}
+              onPress={toggleNotifications}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingLeft}>
+                <View style={styles.iconContainer}>
+                  <Icons.Bell
+                    size={verticalScale(24)}
+                    color={colors.primaryDark}
+                    weight="fill"
+                  />
+                </View>
+                <View style={styles.settingText}>
+                  <Typo fontWeight="600" size={16}>
+                    Notifications
+                  </Typo>
+                  <Typo size={13} color={colors.neutral600}>
+                    {notificationsEnabled
+                      ? "Enabled - You'll receive notifications"
+                      : "Disabled - No notifications"}
+                  </Typo>
+                </View>
+              </View>
+              <Switch
+                value={notificationsEnabled}
+                onValueChange={toggleNotifications}
+                trackColor={{
+                  false: colors.neutral400,
+                  true: colors.primary,
+                }}
+                thumbColor={colors.white}
+                ios_backgroundColor={colors.neutral400}
+              />
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </View>
@@ -256,6 +316,39 @@ const styles = StyleSheet.create({
     padding: spacingY._7,
   },
   inputContainer: {
+    gap: spacingY._7,
+  },
+  settingsSection: {
+    gap: spacingY._10,
+    marginTop: spacingY._10,
+  },
+  settingItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: colors.white,
+    paddingVertical: spacingY._15,
+    paddingHorizontal: spacingX._15,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.neutral300,
+  },
+  settingLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacingX._15,
+    flex: 1,
+  },
+  iconContainer: {
+    width: verticalScale(45),
+    height: verticalScale(45),
+    borderRadius: 12,
+    backgroundColor: colors.primary + "15",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  settingText: {
+    flex: 1,
     gap: spacingY._7,
   },
 });
