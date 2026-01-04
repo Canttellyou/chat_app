@@ -1,4 +1,4 @@
-import { API_URL } from "@/constants";
+import { API_URL } from "@env";
 import axios from "axios";
 
 export const login = async (
