@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Chat_App",
-    "slug": "Chat_App",
+    "slug": "chatu",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -20,7 +20,10 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
@@ -61,8 +64,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "493293c1-dc48-4bc9-92e2-952eaf98dbdf"
+        "projectId": "e35082bb-33ab-494f-8b35-2fa08060edfb"
       }
-    }
+    },
+    "owner": "jaydevsoft"
   }
 }
