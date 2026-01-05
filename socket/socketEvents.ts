@@ -1,4 +1,6 @@
 import { MessageProps } from "@/types";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { AppState, Platform } from "react-native";
 import { getSocket } from "./socket";
@@ -17,6 +19,7 @@ Notifications.setNotificationHandler({
 // Track active conversation to prevent notifications when user is viewing it
 let activeConversationId: string | null = null;
 let currentUserId: string | null = null;
+let notificationsEnabled: boolean = true;
 
 export const setActiveConversation = (conversationId: string | null) => {
   activeConversationId = conversationId;
@@ -28,15 +31,38 @@ export const setCurrentUserId = (userId: string | null) => {
   console.log("Current user ID set to:", userId);
 };
 
+// Load notification settings
+export const loadNotificationSettings = async () => {
+  try {
+    const value = await AsyncStorage.getItem("notificationsEnabled");
+    notificationsEnabled = value !== "false"; // Default to true
+    console.log("Notifications enabled:", notificationsEnabled);
+  } catch (error) {
+    console.error("Error loading notification settings:", error);
+  }
+};
+
 // Request notification permissions (call this on app startup)
 export const requestNotificationPermissions = async () => {
   try {
+    // Only request permissions on physical devices
+    if (!Device.isDevice) {
+      console.log("Must use physical device for push notifications");
+      return false;
+    }
+
+    // Load notification settings
+    await loadNotificationSettings();
+
     if (Platform.OS === "android") {
       await Notifications.setNotificationChannelAsync("messages", {
         name: "Messages",
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         sound: "default",
+        enableLights: true,
+        enableVibrate: true,
+        showBadge: true,
       });
     }
 
@@ -67,15 +93,19 @@ const showMessageNotification = async (
   message: MessageProps & { conversationId: string }
 ) => {
   try {
+    // Check if notifications are enabled
+    if (!notificationsEnabled) {
+      console.log("Notifications disabled by user");
+      return;
+    }
+
     // Don't show notification if this is the current user's message
     if (message.sender.id === currentUserId) {
       console.log("Skipping notification - message is from current user");
       return;
     }
 
-    console.log("Attempting to show notification for message:", message);
-
-    // Don't show notification if user is viewing this conversation
+    // Don't show notification if user is viewing this conversation AND app is active
     const appState = AppState.currentState;
     if (
       appState === "active" &&
@@ -85,7 +115,14 @@ const showMessageNotification = async (
       return;
     }
 
+    console.log("📢 Showing notification for message:", message.id);
+
+    // Use message ID as identifier to prevent duplicates
+    const identifier = `msg-${message.id}`;
+
+    // Schedule notification immediately with high priority
     const notificationId = await Notifications.scheduleNotificationAsync({
+      identifier: identifier,
       content: {
         title: message.sender.name || "New Message",
         body: message.content || "You have a new message",
@@ -95,14 +132,35 @@ const showMessageNotification = async (
           type: "newMessage",
         },
         sound: "default",
-        priority: Notifications.AndroidNotificationPriority.HIGH,
+        priority: Notifications.AndroidNotificationPriority.MAX,
+        badge: 1,
+        ...(Platform.OS === "android" && {
+          channelId: "messages",
+        }),
       },
       trigger: null, // Show immediately
     });
 
     console.log("✅ Notification shown with ID:", notificationId);
+
+    // Update badge count
+    if (Platform.OS === "ios") {
+      const currentBadge = await Notifications.getBadgeCountAsync();
+      await Notifications.setBadgeCountAsync(currentBadge + 1);
+    }
   } catch (error) {
     console.error("❌ Error showing notification:", error);
+  }
+};
+
+// Clear badge count when user opens the app
+export const clearBadgeCount = async () => {
+  try {
+    if (Platform.OS === "ios") {
+      await Notifications.setBadgeCountAsync(0);
+    }
+  } catch (error) {
+    console.error("Error clearing badge count:", error);
   }
 };
 
@@ -114,6 +172,11 @@ export const testNotification = async () => {
         title: "Test Notification",
         body: "This is a test notification!",
         data: { test: true },
+        sound: "default",
+        priority: Notifications.AndroidNotificationPriority.MAX,
+        ...(Platform.OS === "android" && {
+          channelId: "messages",
+        }),
       },
       trigger: null,
     });
@@ -204,6 +267,9 @@ export const getConversations = (payload: any, off: boolean = false) => {
   }
 };
 
+// Track if we've already set up the notification listener
+let notificationListenerSetup = false;
+
 export const newMessage = (payload: any, off: boolean = false) => {
   const socket = getSocket();
   if (!socket) {
@@ -212,14 +278,21 @@ export const newMessage = (payload: any, off: boolean = false) => {
   }
 
   if (off) {
-    socket.off("newMessage", payload);
+    socket.off("newMessage");
+    notificationListenerSetup = false;
   } else if (typeof payload === "function") {
-    const wrappedCallback = async (data: any) => {
-      console.log("📨 New message received via socket");
+    // Remove any existing listeners first to prevent duplicates
+    socket.off("newMessage");
 
-      // The conversationId is inside data.data based on your structure
+    const wrappedCallback = async (data: any) => {
+      console.log("📨 New message received via socket", data);
+
+      // Show notification immediately without waiting
       if (data.success && data.data) {
-        await showMessageNotification(data.data);
+        // Don't await - fire and forget for faster response
+        showMessageNotification(data.data).catch((err) => {
+          console.error("Error in notification:", err);
+        });
       } else {
         console.log("❌ Unexpected data structure:", data);
       }
@@ -229,6 +302,8 @@ export const newMessage = (payload: any, off: boolean = false) => {
     };
 
     socket.on("newMessage", wrappedCallback);
+    notificationListenerSetup = true;
+    console.log("✅ New message listener registered");
   } else {
     socket.emit("newMessage", payload);
   }

@@ -11,16 +11,17 @@ import { uploadFileToCloudinary } from "@/services/imageService";
 import { updateProfile } from "@/socket/socketEvents";
 import { UserDataProps } from "@/types";
 import { scale, verticalScale } from "@/utils/styling";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import * as Icons from "phosphor-react-native";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
-  Switch,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -55,11 +56,23 @@ const ProfileModal = () => {
 
   useEffect(() => {
     updateProfile(processUpdateProfile);
+    loadNotificationSetting();
 
     return () => {
       updateProfile(processUpdateProfile, true);
     };
   }, []);
+
+  const loadNotificationSetting = async () => {
+    try {
+      const value = await AsyncStorage.getItem("notificationsEnabled");
+      if (value !== null) {
+        setNotificationsEnabled(value === "true");
+      }
+    } catch (error) {
+      console.log("Error loading notification setting:", error);
+    }
+  };
 
   const processUpdateProfile = (res: any) => {
     console.log("got res: ", res);
@@ -101,13 +114,8 @@ const ProfileModal = () => {
     ]);
   };
 
-  const toggleNotifications = () => {
-    setNotificationsEnabled(!notificationsEnabled);
-    // TODO: Save notification preference to AsyncStorage or backend
-    Alert.alert(
-      "Notifications",
-      `Notifications ${!notificationsEnabled ? "enabled" : "disabled"}`
-    );
+  const navigateToSettings = () => {
+    Linking.openSettings();
   };
 
   const onSubmit = async () => {
@@ -203,12 +211,12 @@ const ProfileModal = () => {
 
             <TouchableOpacity
               style={styles.settingItem}
-              onPress={toggleNotifications}
+              onPress={navigateToSettings}
               activeOpacity={0.7}
             >
               <View style={styles.settingLeft}>
                 <View style={styles.iconContainer}>
-                  <Icons.Bell
+                  <Icons.Gear
                     size={verticalScale(24)}
                     color={colors.primaryDark}
                     weight="fill"
@@ -216,24 +224,16 @@ const ProfileModal = () => {
                 </View>
                 <View style={styles.settingText}>
                   <Typo fontWeight="600" size={16}>
-                    Notifications
+                    App Settings
                   </Typo>
                   <Typo size={13} color={colors.neutral600}>
-                    {notificationsEnabled
-                      ? "Enabled - You'll receive notifications"
-                      : "Disabled - No notifications"}
+                    Manage notifications and permissions
                   </Typo>
                 </View>
               </View>
-              <Switch
-                value={notificationsEnabled}
-                onValueChange={toggleNotifications}
-                trackColor={{
-                  false: colors.neutral400,
-                  true: colors.primary,
-                }}
-                thumbColor={colors.white}
-                ios_backgroundColor={colors.neutral400}
+              <Icons.CaretRight
+                size={verticalScale(20)}
+                color={colors.neutral600}
               />
             </TouchableOpacity>
           </View>
